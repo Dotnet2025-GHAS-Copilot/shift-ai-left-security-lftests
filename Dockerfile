@@ -1,0 +1,14 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build 
+# 9.0-alpine
+WORKDIR /app
+
+COPY MyApp.API .
+
+RUN dotnet restore
+RUN dotnet publish -c Release -o out
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
+WORKDIR /app
+COPY --from=build /app/out ./
+
+ENTRYPOINT ["dotnet", "MyApp.API.dll"]

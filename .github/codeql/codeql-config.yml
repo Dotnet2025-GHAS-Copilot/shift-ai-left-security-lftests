@@ -1,0 +1,6 @@
+name: "Security and Quality"
+
+queries:
+  - uses: security-and-quality
+  - uses: security-extended
+  - uses: ./.github/codeql/packs

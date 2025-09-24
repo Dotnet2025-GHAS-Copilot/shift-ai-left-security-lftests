@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MyApp.API.Authentication;
 using MyApp.API.Services;
+using MyApp.API.Models;
 using System.Collections.Generic;
 using System.Text;
 
@@ -26,6 +27,9 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        // Configure JWT options
+        services.Configure<JwtConfig>(Configuration.GetSection("JWT"));
+        
         // Configure JWT Authentication
         services.AddAuthentication(x =>
         {
@@ -34,16 +38,18 @@ public class Startup
         })
         .AddJwtBearer(x =>
         {
+            var jwtConfig = Configuration.GetSection("JWT").Get<JwtConfig>();
+            
             x.RequireHttpsMetadata = false; // For development - should be true in production
             x.SaveToken = true;
             x.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["JWT:Key"])),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Key)),
                 ValidateIssuer = true,
-                ValidIssuer = Configuration["JWT:Issuer"],
+                ValidIssuer = jwtConfig.Issuer,
                 ValidateAudience = true,
-                ValidAudience = Configuration["JWT:Audience"],
+                ValidAudience = jwtConfig.Audience,
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };

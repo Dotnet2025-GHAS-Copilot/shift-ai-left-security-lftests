@@ -21,13 +21,13 @@ namespace Demo.Web.Ghas.Controllers
                 return BadRequest("Empty file data.");
 
             // Ensure directory exists
-            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot/images/products");
+            var uploadsDir = Path.Join(Directory.GetCurrentDirectory(), @"wwwroot/images/products");
             if (!Directory.Exists(uploadsDir))
             {
                 Directory.CreateDirectory(uploadsDir);
             }
 
-            var fullPath = Path.Combine(uploadsDir, fileViewModel.FileName);
+            var fullPath = Path.Join(uploadsDir, fileViewModel.FileName);
             
             // Check if file exists and remove it
             if (System.IO.File.Exists(fullPath))

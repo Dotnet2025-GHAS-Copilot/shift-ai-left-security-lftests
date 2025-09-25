@@ -63,8 +63,14 @@ namespace MyApp.API.Services
                 var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
                 return principal;
             }
-            catch
+            catch (SecurityTokenException)
             {
+                // Token validation failed - expired, invalid signature, etc.
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                // Invalid token format or null token
                 return null;
             }
         }

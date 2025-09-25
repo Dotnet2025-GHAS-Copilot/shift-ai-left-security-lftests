@@ -7,15 +7,56 @@ using System;
 using System.IO;
 using System.Reflection;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using MyApp.API.Authentication;
+using MyApp.API.Services;
+using MyApp.API.Models;
 using System.Collections.Generic;
+using System.Text;
 
 public class Startup
 {
+    public Startup(IConfiguration configuration)
+    {
+        Configuration = configuration;
+    }
+
+    public IConfiguration Configuration { get; }
+
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddAuthentication("BasicAuthentication")
-            .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+        // Configure JWT options
+        services.Configure<JwtConfig>(Configuration.GetSection("JWT"));
+        
+        // Configure JWT Authentication
+        services.AddAuthentication(x =>
+        {
+            x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(x =>
+        {
+            var jwtConfig = Configuration.GetSection("JWT").Get<JwtConfig>();
+            
+            x.RequireHttpsMetadata = false; // For development - should be true in production
+            x.SaveToken = true;
+            x.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Key)),
+                ValidateIssuer = true,
+                ValidIssuer = jwtConfig.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtConfig.Audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero
+            };
+        });
+        
+        // Register JWT service
+        services.AddScoped<IJwtService, JwtService>();
         
         services.AddControllers();
         
@@ -23,19 +64,19 @@ public class Startup
         {
             c.SwaggerDoc("v1", new OpenApiInfo 
             { 
-                Title = "My Insecure API", 
+                Title = "My Secure API", 
                 Version = "v1",
-                Description = "A simple Insecure Shift AI Security Left 2025 API",
+                Description = "A Shift AI Security Left 2025 API with JWT Authentication",
 
             });
             
-            c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Description = "Basic Authentication. You could never guess the value, ends with 25 😜",
-                Type = SecuritySchemeType.ApiKey,
+                Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
                 Name = "Authorization",
                 In = ParameterLocation.Header,
-                Scheme = "ApiKeyScheme"
+                Type = SecuritySchemeType.ApiKey,
+                Scheme = "Bearer"
             });
 
             var scheme = new OpenApiSecurityScheme
@@ -43,7 +84,7 @@ public class Startup
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "ApiKey"
+                    Id = "Bearer"
                 },
                 In = ParameterLocation.Header
             };
@@ -56,7 +97,7 @@ public class Startup
             c.AddSecurityRequirement(requirement);
             
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            var xmlPath = Path.Join(AppContext.BaseDirectory, xmlFile);
             c.IncludeXmlComments(xmlPath);
         });
         

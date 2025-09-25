@@ -2,40 +2,43 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using System;
-using Microsoft.AspNetCore.Http;
 
 namespace Demo.Web.Ghas.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    [IgnoreAntiforgeryToken]
+    [Authorize] // Require JWT authentication
     public class FileController : Controller
     {
-        private const string AUTH_KEY = "x-demo-auth";
         [HttpPost]
-        [AllowAnonymous]
         public IActionResult Upload(FileViewModel fileViewModel)
         {
-            if (!Request.Headers.ContainsKey("auth-key") || Request.Headers["auth-key"].ToString() != AUTH_KEY)
-            {
-                return Unauthorized();
-            }
-
-            if (fileViewModel == null || string.IsNullOrEmpty(fileViewModel.DataBase64)) return BadRequest();
+            if (fileViewModel == null || string.IsNullOrEmpty(fileViewModel.DataBase64)) 
+                return BadRequest("Invalid file data provided.");
 
             var fileData = Convert.FromBase64String(fileViewModel.DataBase64);
-            if (fileData.Length <= 0) return BadRequest();
+            if (fileData.Length <= 0) 
+                return BadRequest("Empty file data.");
 
-            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot/images/products", fileViewModel.FileName);
+            // Ensure directory exists
+            var uploadsDir = Path.Join(Directory.GetCurrentDirectory(), @"wwwroot/images/products");
+            if (!Directory.Exists(uploadsDir))
+            {
+                Directory.CreateDirectory(uploadsDir);
+            }
+
+            var fullPath = Path.Join(uploadsDir, fileViewModel.FileName);
+            
+            // Check if file exists and remove it
             if (System.IO.File.Exists(fullPath))
             {
                 System.IO.File.Delete(fullPath);
             }
+            
             System.IO.File.WriteAllBytes(fullPath, fileData);
 
-            return Ok();
+            return Ok(new { message = "File uploaded successfully", fileName = fileViewModel.FileName });
         }
-
     }
 
     public class FileViewModel
